@@ -1,0 +1,109 @@
+name: Mobile E2E Tests (Android + iOS Local)
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  android-e2e:
+    name: Android E2E (Maestro Local)
+    runs-on: macOS-latest
+
+    steps:
+      - name: 📦 Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🤖 Build Android APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: 📦 Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: 🚀 Run Android Emulator + Maestro
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          profile: Nexus 6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            adb install android/app/build/outputs/apk/release/app-release.apk
+            maestro test .maestro/ \
+              --format junit \
+              --output android-report.xml \
+              --env=APP_ID=com.your.app
+
+      - name: 📤 Upload Android Test Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-e2e-report
+          path: android-report.xml
+
+
+  ios-e2e:
+    name: iOS E2E (Maestro Local)
+    runs-on: macOS-latest
+
+    steps:
+      - name: 📦 Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: 🍏 Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: 🍏 Build iOS (Simulator)
+        run: |
+          cd ios
+          xcodebuild \
+            -workspace YourApp.xcworkspace \
+            -scheme YourApp \
+            -sdk iphonesimulator \
+            -configuration Release \
+            -derivedDataPath build
+
+      - name: 📱 Boot iOS Simulator
+        run: |
+          xcrun simctl boot "iPhone 14" || true
+          sleep 20
+
+      - name: 🧪 Run Maestro on iOS
+        run: |
+          maestro test .maestro/ \
+            --format junit \
+            --output ios-report.xml \
+            --env=APP_ID=com.your.app
+
+      - name: 📤 Upload iOS Test Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-e2e-report
+          path: ios-report.xml
