@@ -1,4 +1,4 @@
-name: Expo Mobile E2E Tests (Maestro Local)
+name: Expo Mobile E2E Tests (Maestro via Firebase Test Lab)
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
 jobs:
 
   android-e2e:
-    name: Android E2E (Maestro Local)
+    name: Android E2E (Maestro via Firebase Test Lab)
     runs-on: macos-latest
 
     steps:
@@ -50,107 +50,25 @@ jobs:
           ./gradlew assembleDebug
           cd ..
 
-      - name: Start Emulator & Run Maestro
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          profile: Nexus 6
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: |
-            echo "Starting Android emulator..."
-            nohup $ANDROID_HOME/emulator/emulator -avd Nexus_6_API_34 -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim &
-            echo "Waiting for emulator to appear..."
-            adb wait-for-device
-            
-            boot_completed=""
-            until [ "$boot_completed" == "1" ]; do
-              sleep 10
-              boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              echo "Waiting for emulator to boot..."
-            done
-            
-            echo "Emulator is ready!"
-            adb install android/app/build/outputs/apk/debug/app-debug.apk
-            maestro test .maestro/ \
-              -e APP_ID=com.obytes.development \
-              --format html \
-              --output maestro-android-report.html
+      # -----------------------------
+      # Run Maestro on Firebase Test Lab
+      # -----------------------------
+      - name: Run Maestro on Firebase Test Lab
+        run: |
+          gcloud firebase test android run \
+            --type instrumentation \
+            --app android/app/build/outputs/apk/debug/app-debug.apk \
+            --test .maestro/test.apk \
+            --results-bucket ${{ secrets.GCP_TESTLAB_BUCKET }} \
+            --results-dir maestro-results \
+            --device model=Nexus6,version=34,locale=en,orientation=portrait
 
-      - name: Upload Android Report
-        uses: actions/upload-artifact@v4   # <-- updated to v4
-        with:
-          name: maestro-android-report
-          path: maestro-android-report.html
+      - name: Download Test Lab Results
+        run: |
+          gsutil -m cp -r gs://${{ secrets.GCP_TESTLAB_BUCKET }}/maestro-results/* ./maestro-results/
 
-
-  ios-e2e:
-    name: iOS E2E (Maestro via EAS Build)
-    runs-on: macos-latest
-  
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-  
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-  
-      - name: Install PNPM + Dependencies
-        run: |
-          npm install -g pnpm
-          pnpm install
-  
-      - name: Install Maestro
-        run: pnpm run install-maestro
-  
-      - name: Load Env Variables
-        run: |
-          echo "EXPO_PUBLIC_APP_ENV=development" >> $GITHUB_ENV
-  
-      # -----------------------------
-      # Install EAS CLI & Authenticate
-      # -----------------------------
-      - name: Install EAS CLI & Initialize Project
-        run: |
-          npm install -g eas-cli
-          eas login --token ${{ secrets.EXPO_TOKEN }}
-          eas whoami
-          eas init --id bc979eaa-5b07-4fcc-b0d1-8f8b2f98f6d7
-        working-directory: ${{ github.workspace }}
-  
-      # -----------------------------
-      # Build iOS via EAS (cloud)
-      # -----------------------------
-      - name: Build iOS Dev Client
-        run: pnpm build:development:ios
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-  
-      - name: Download iOS IPA
-        uses: actions/download-artifact@v4
-        with:
-          name: ios-build
-          path: ios-app.ipa
-  
-      # -----------------------------
-      # Run Maestro locally (optional)
-      # -----------------------------
-      - name: Run Maestro on iOS Simulator
-        run: |
-          echo "Skipping iOS simulator in CI. Use local Mac for full Maestro tests."
-          # Uncomment below lines if running on local Mac
-          # xcrun simctl boot "iPhone 14" || true
-          # sleep 20
-          # maestro test .maestro/ \
-          #   -e APP_ID=com.obytes.development \
-          #   --format html \
-          #   --output maestro-ios-report.html
-  
-      - name: Upload iOS Report
+      - name: Upload Maestro Report
         uses: actions/upload-artifact@v4
         with:
-          name: maestro-ios-report
-          path: maestro-ios-report.html
-
+          name: maestro-android-report
+          path: maestro-results/
