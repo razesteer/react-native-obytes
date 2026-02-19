@@ -73,9 +73,8 @@ jobs:
               --format html \
               --output maestro-android-report.html
 
-
       - name: Upload Android Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4   # <-- updated to v4
         with:
           name: maestro-android-report
           path: maestro-android-report.html
@@ -115,7 +114,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Download iOS IPA
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4   # <-- updated to v4
         with:
           name: ios-build
           path: ios-app.ipa
@@ -135,7 +134,7 @@ jobs:
           #   --output maestro-ios-report.html
 
       - name: Upload iOS Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4   # <-- updated to v4
         with:
           name: maestro-ios-report
           path: maestro-ios-report.html
