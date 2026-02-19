@@ -105,6 +105,9 @@ jobs:
         run: |
           echo "EXPO_PUBLIC_APP_ENV=development" >> $GITHUB_ENV
 
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
       # -----------------------------
       # Build iOS via EAS (cloud)
       # -----------------------------
