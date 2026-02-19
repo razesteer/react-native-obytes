@@ -87,31 +87,39 @@ jobs:
   ios-e2e:
     name: iOS E2E (Maestro via EAS Build)
     runs-on: macos-latest
-
+  
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
-
+  
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
+  
       - name: Install PNPM + Dependencies
         run: |
           npm install -g pnpm
           pnpm install
-
+  
       - name: Install Maestro
         run: pnpm run install-maestro
-
+  
       - name: Load Env Variables
         run: |
           echo "EXPO_PUBLIC_APP_ENV=development" >> $GITHUB_ENV
-
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-
+  
+      # -----------------------------
+      # Install EAS CLI & Authenticate
+      # -----------------------------
+      - name: Install EAS CLI & Initialize Project
+        run: |
+          npm install -g eas-cli
+          eas login --token ${{ secrets.EXPO_TOKEN }}
+          eas whoami
+          eas init --id bc979eaa-5b07-4fcc-b0d1-8f8b2f98f6d7
+        working-directory: ${{ github.workspace }}
+  
       # -----------------------------
       # Build iOS via EAS (cloud)
       # -----------------------------
@@ -119,13 +127,13 @@ jobs:
         run: pnpm build:development:ios
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
+  
       - name: Download iOS IPA
-        uses: actions/download-artifact@v4   # <-- updated to v4
+        uses: actions/download-artifact@v4
         with:
           name: ios-build
           path: ios-app.ipa
-
+  
       # -----------------------------
       # Run Maestro locally (optional)
       # -----------------------------
@@ -139,9 +147,10 @@ jobs:
           #   -e APP_ID=com.obytes.development \
           #   --format html \
           #   --output maestro-ios-report.html
-
+  
       - name: Upload iOS Report
-        uses: actions/upload-artifact@v4   # <-- updated to v4
+        uses: actions/upload-artifact@v4
         with:
           name: maestro-ios-report
           path: maestro-ios-report.html
+
