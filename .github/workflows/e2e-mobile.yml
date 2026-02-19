@@ -48,7 +48,7 @@ jobs:
             maestro test .maestro/ \
               --format junit \
               --output android-report.xml \
-              --env=APP_ID=com.your.app
+              --env=APP_ID=com.obytes.development
 
       - name: 📤 Upload Android Test Report
         if: always()
@@ -99,7 +99,7 @@ jobs:
           maestro test .maestro/ \
             --format junit \
             --output ios-report.xml \
-            --env=APP_ID=com.your.app
+            --env=APP_ID=com.obytes.development
 
       - name: 📤 Upload iOS Test Report
         if: always()
