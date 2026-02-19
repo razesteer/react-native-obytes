@@ -58,15 +58,19 @@ jobs:
           profile: Nexus 6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            # Wait until emulator is fully booted
+            echo "Starting Android emulator..."
+            nohup $ANDROID_HOME/emulator/emulator -avd Nexus_6_API_34 -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim &
+            echo "Waiting for emulator to appear..."
             adb wait-for-device
+            
             boot_completed=""
             until [ "$boot_completed" == "1" ]; do
-              sleep 5
+              sleep 10
               boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
               echo "Waiting for emulator to boot..."
             done
-
+            
+            echo "Emulator is ready!"
             adb install android/app/build/outputs/apk/debug/app-debug.apk
             maestro test .maestro/ \
               -e APP_ID=com.obytes.development \
