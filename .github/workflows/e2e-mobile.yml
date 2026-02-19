@@ -1,38 +1,52 @@
-name: Expo Mobile E2E Tests (Maestro via Firebase Test Lab)
+name: Android E2E (Maestro + Firebase Test Lab)
 
 on:
   workflow_dispatch:
 
 jobs:
-
   android-e2e:
-    name: Android E2E (Maestro via Firebase Test Lab)
     runs-on: macos-latest
 
     steps:
+      # ----------------------------------------
+      # Checkout
+      # ----------------------------------------
       - name: Checkout Repo
         uses: actions/checkout@v4
 
+      # ----------------------------------------
+      # Setup Node + PNPM
+      # ----------------------------------------
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install PNPM + Dependencies
-        run: |
-          npm install -g pnpm
-          pnpm install
+      - name: Install PNPM
+        run: npm install -g pnpm
+
+      - name: Install Dependencies
+        run: pnpm install
 
       - name: Install Maestro
         run: pnpm run install-maestro
 
       - name: Load Env Variables
-        run: |
-          echo "EXPO_PUBLIC_APP_ENV=development" >> $GITHUB_ENV
+        run: echo "EXPO_PUBLIC_APP_ENV=development" >> $GITHUB_ENV
 
-      # -----------------------------
-      # Cache Gradle to speed up build
-      # -----------------------------
+      # ----------------------------------------
+      # Setup Google Cloud SDK (THIS FIXES YOUR ERROR)
+      # ----------------------------------------
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      # ----------------------------------------
+      # Cache Gradle
+      # ----------------------------------------
       - name: Cache Gradle
         uses: actions/cache@v3
         with:
@@ -41,6 +55,9 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
+      # ----------------------------------------
+      # Prebuild + Build APK
+      # ----------------------------------------
       - name: Prebuild Native Projects
         run: pnpm prebuild:development
 
@@ -50,23 +67,39 @@ jobs:
           ./gradlew assembleDebug
           cd ..
 
-      # -----------------------------
-      # Run Maestro on Firebase Test Lab
-      # -----------------------------
+      # ----------------------------------------
+      # Upload APK to GCS (overwrite latest)
+      # ----------------------------------------
+      - name: Upload APK to GCS
+        run: |
+          gsutil cp android/app/build/outputs/apk/debug/app-debug.apk \
+          gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/latest.apk
+
+      # ----------------------------------------
+      # Run Maestro on Firebase Test Lab (using GCS APK)
+      # ----------------------------------------
       - name: Run Maestro on Firebase Test Lab
         run: |
           gcloud firebase test android run \
             --type instrumentation \
-            --app android/app/build/outputs/apk/debug/app-debug.apk \
+            --app gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/latest.apk \
             --test .maestro/test.apk \
             --results-bucket ${{ secrets.GCP_TESTLAB_BUCKET }} \
             --results-dir maestro-results \
             --device model=Nexus6,version=34,locale=en,orientation=portrait
 
+      # ----------------------------------------
+      # Download Results
+      # ----------------------------------------
       - name: Download Test Lab Results
         run: |
-          gsutil -m cp -r gs://${{ secrets.GCP_TESTLAB_BUCKET }}/maestro-results/* ./maestro-results/
+          gsutil -m cp -r \
+          gs://${{ secrets.GCP_TESTLAB_BUCKET }}/maestro-results/* \
+          ./maestro-results/
 
+      # ----------------------------------------
+      # Upload Report as Artifact
+      # ----------------------------------------
       - name: Upload Maestro Report
         uses: actions/upload-artifact@v4
         with:
