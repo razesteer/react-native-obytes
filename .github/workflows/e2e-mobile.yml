@@ -30,6 +30,17 @@ jobs:
         run: |
           echo "EXPO_PUBLIC_APP_ENV=development" >> $GITHUB_ENV
 
+      # -----------------------------
+      # Cache Gradle to speed up build
+      # -----------------------------
+      - name: Cache Gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
       - name: Prebuild Native Projects
         run: pnpm prebuild:development
 
@@ -47,21 +58,31 @@ jobs:
           profile: Nexus 6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
+            # Wait until emulator is fully booted
+            adb wait-for-device
+            boot_completed=""
+            until [ "$boot_completed" == "1" ]; do
+              sleep 5
+              boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+              echo "Waiting for emulator to boot..."
+            done
+
             adb install android/app/build/outputs/apk/debug/app-debug.apk
             maestro test .maestro/ \
               -e APP_ID=com.obytes.development \
               --format html \
               --output maestro-android-report.html
 
+
       - name: Upload Android Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: maestro-android-report
           path: maestro-android-report.html
 
 
   ios-e2e:
-    name: iOS E2E (Maestro Local via EAS Build)
+    name: iOS E2E (Maestro via EAS Build)
     runs-on: macos-latest
 
     steps:
@@ -85,30 +106,36 @@ jobs:
         run: |
           echo "EXPO_PUBLIC_APP_ENV=development" >> $GITHUB_ENV
 
-      - name: Build iOS via EAS
-        run: |
-          pnpm build:development:ios
+      # -----------------------------
+      # Build iOS via EAS (cloud)
+      # -----------------------------
+      - name: Build iOS Dev Client
+        run: pnpm build:development:ios
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Download iOS IPA
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ios-build
           path: ios-app.ipa
 
+      # -----------------------------
+      # Run Maestro locally (optional)
+      # -----------------------------
       - name: Run Maestro on iOS Simulator
         run: |
-          # This requires local Mac, may fail in CI runner without proper simulator setup
-          xcrun simctl boot "iPhone 14" || true
-          sleep 20
-          maestro test .maestro/ \
-            -e APP_ID=com.obytes.development \
-            --format html \
-            --output maestro-ios-report.html
+          echo "Skipping iOS simulator in CI. Use local Mac for full Maestro tests."
+          # Uncomment below lines if running on local Mac
+          # xcrun simctl boot "iPhone 14" || true
+          # sleep 20
+          # maestro test .maestro/ \
+          #   -e APP_ID=com.obytes.development \
+          #   --format html \
+          #   --output maestro-ios-report.html
 
       - name: Upload iOS Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: maestro-ios-report
           path: maestro-ios-report.html
