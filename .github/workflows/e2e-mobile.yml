@@ -50,33 +50,33 @@ jobs:
       # ----------------------------------------
       # Cache Gradle
       # ----------------------------------------
-      - name: Cache Gradle
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+      # - name: Cache Gradle
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: |
+      #       ~/.gradle/caches
+      #       ~/.gradle/wrapper
+      #     key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
       # ----------------------------------------
       # Prebuild + Build APK
       # ----------------------------------------
-      - name: Prebuild Native Projects
-        run: pnpm prebuild:development
+      # - name: Prebuild Native Projects
+      #   run: pnpm prebuild:development
 
-      - name: Build Android Debug APK
-        run: |
-          cd android
-          ./gradlew assembleDebug
-          cd ..
+      # - name: Build Android Debug APK
+      #   run: |
+      #     cd android
+      #     ./gradlew assembleDebug
+      #     cd ..
 
       # ----------------------------------------
       # Upload APK to GCS (overwrite latest)
       # ----------------------------------------
-      - name: Upload APK to GCS
-        run: |
-          gsutil cp android/app/build/outputs/apk/debug/app-debug.apk \
-          gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/latest.apk
+      # - name: Upload APK to GCS
+      #   run: |
+      #     gsutil cp android/app/build/outputs/apk/debug/app-debug.apk \
+      #     gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/latest.apk
 
       # ----------------------------------------
       # Run Maestro on Firebase Test Lab
