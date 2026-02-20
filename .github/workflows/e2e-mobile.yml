@@ -78,15 +78,27 @@ jobs:
       #     gsutil cp android/app/build/outputs/apk/debug/app-debug.apk \
       #     gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/latest.apk
 
+            # ----------------------------------------
+      # Build Maestro Test APK
       # ----------------------------------------
-      # Run Maestro on Firebase Test Lab
+      - name: Build Maestro Test APK
+        run: |
+          cd android-tests
+          ./gradlew assembleDebugAndroidTest
+          cd ..
+          # Upload test APK to GCS
+          gsutil cp android-tests/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+            gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/test.apk
+
+      # ----------------------------------------
+      # Run Maestro tests on Firebase Test Lab
       # ----------------------------------------
       - name: Run Maestro on Firebase Test Lab
         run: |
           gcloud firebase test android run \
             --type instrumentation \
             --app gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/latest.apk \
-            --test .maestro/test.apk \
+            --test gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/test.apk \
             --results-bucket ${{ secrets.GCP_TESTLAB_BUCKET }} \
             --results-dir maestro-results \
             --device model=Pixel2.arm,version=33,locale=en,orientation=portrait
