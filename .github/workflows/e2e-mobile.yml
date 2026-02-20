@@ -89,7 +89,7 @@ jobs:
             --test .maestro/test.apk \
             --results-bucket ${{ secrets.GCP_TESTLAB_BUCKET }} \
             --results-dir maestro-results \
-            --device model=Nexus6,version=34,locale=en,orientation=portrait
+            --device model=Pixel2.arm,version=33,locale=en,orientation=portrait
 
       # ----------------------------------------
       # Download Results
