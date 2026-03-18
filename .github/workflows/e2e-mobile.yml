@@ -1,4 +1,4 @@
-name: Android E2E (Maestro + Firebase Test Lab)
+name: Android E2E (Maestro Cloud)
 
 on:
   workflow_dispatch:
@@ -8,15 +8,10 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # ----------------------------------------
-      # Checkout
-      # ----------------------------------------
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      # ----------------------------------------
-      # Setup Node + PNPM
-      # ----------------------------------------
+      # Node + PNPM
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -34,22 +29,7 @@ jobs:
       - name: Load Env Variables
         run: echo "EXPO_PUBLIC_APP_ENV=development" >> $GITHUB_ENV
 
-      # ----------------------------------------
-      # PROPER GOOGLE AUTH
-      # ----------------------------------------
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
-
-      - name: Setup gcloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-      # ----------------------------------------
       # Cache Gradle
-      # ----------------------------------------
       - name: Cache Gradle
         uses: actions/cache@v3
         with:
@@ -58,9 +38,7 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
-      # ----------------------------------------
-      # Prebuild + Build APK
-      # ----------------------------------------
+      # Build APK
       - name: Prebuild Native Projects
         run: pnpm prebuild:development
 
@@ -70,50 +48,11 @@ jobs:
           ./gradlew assembleDebug
           cd ..
 
-      # ----------------------------------------
-      # Upload APK to GCS (overwrite latest)
-      # ----------------------------------------
-      # - name: Upload APK to GCS
-      #   run: |
-      #     gsutil cp android/app/build/outputs/apk/debug/app-debug.apk \
-      #     gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/latest.apk
-
-      # ----------------------------------------
-      # Prepare Maestro Test Sources in android/androidTest
-      # ----------------------------------------
-      - name: Copy Maestro Test Files
+      # 🔥 Run tests on Maestro Cloud
+      - name: Run Maestro Cloud Tests
+        env:
+          MAESTRO_CLOUD_API_KEY: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
         run: |
-          mkdir -p android/app/src/androidTest/assets
-          mkdir -p android/app/src/androidTest/java/com/company/maestro
-          cp -R .maestro/app/*.yaml android/app/src/androidTest/assets/
-          cp -R android-tests/app/src/androidTest/java/com/company/maestro/* \
-                 android/app/src/androidTest/java/com/company/maestro/
-
-      # ----------------------------------------
-      # Build Maestro Test APK
-      # ----------------------------------------
-      - name: Build Maestro Test APK
-        run: |
-          cd android
-          ./gradlew assembleDebugAndroidTest
-          cd ..
-          gsutil cp android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
-            gs://${{ secrets.GCP_TESTLAB_BUCKET }}/apks/test.apk
-
-      # ----------------------------------------
-      # Download Results
-      # ----------------------------------------
-      - name: Download Test Lab Results
-        run: |
-          gsutil -m cp -r \
-          gs://${{ secrets.GCP_TESTLAB_BUCKET }}/maestro-results/* \
-          ./maestro-results/
-
-      # ----------------------------------------
-      # Upload Report as Artifact
-      # ----------------------------------------
-      - name: Upload Maestro Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: maestro-android-report
-          path: maestro-results/
+          maestro cloud \
+            --apk android/app/build/outputs/apk/debug/app-debug.apk \
+            .maestro/app
