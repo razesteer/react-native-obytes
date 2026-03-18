@@ -24,15 +24,22 @@ jobs:
         uses: ./.github/actions/setup-node-pnpm-install
 
       # ----------------------------------------
-      # Set up JDK and generate standalone release APK
+      # Prebuild Native Projects (preview environment)
       # ----------------------------------------
-      - name: 📦 Set Up JDK + Generate Release APK
-        uses: ./.github/actions/setup-jdk-generate-apk
-        with:
-          APP_ENV: staging
+      - name: 📦 Prebuild Native Projects (Preview)
+        run: pnpm prebuild:preview
 
       # ----------------------------------------
-      # Upload Test APK as artifact (optional)
+      # Build Android Release APK
+      # ----------------------------------------
+      - name: 📦 Build Android Release APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+          cd ..
+
+      # ----------------------------------------
+      # Upload Release APK as artifact (optional)
       # ----------------------------------------
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
