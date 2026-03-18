@@ -48,11 +48,10 @@ jobs:
           ./gradlew assembleDebug
           cd ..
 
-      # 🔥 Run tests on Maestro Cloud
+      # 🚀 Maestro Cloud
       - name: Run Maestro Cloud Tests
-        env:
-          MAESTRO_CLOUD_API_KEY: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
-        run: |
-          maestro cloud \
-            --apk android/app/build/outputs/apk/debug/app-debug.apk \
-            .maestro/app
+        uses: mobile-dev-inc/action-maestro-cloud@v1
+        with:
+          api-key: ${{ secrets.MAESTRO_API_KEY }}
+          project-id: ${{ secrets.MAESTRO_PROJECT_ID }}
+          app-file: android/app/build/outputs/apk/debug/app-debug.apk
