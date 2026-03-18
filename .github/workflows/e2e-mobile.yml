@@ -56,5 +56,6 @@ jobs:
           api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
           project-id: ${{ secrets.MAESTRO_PROJECT_ID }}
           app-file: android/app/build/outputs/apk/release/app-release.apk
+          app-id: com.obytes.preview   # ✅ FORCE OVERRIDE
           env: |
             APP_ID=com.obytes.preview
