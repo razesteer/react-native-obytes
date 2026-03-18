@@ -1,66 +1,49 @@
-name: Android E2E (Maestro Cloud)
+name: E2E Razesteer Maestro Tests Android (Maestro Cloud)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:   # manual trigger only
 
 jobs:
-  android-e2e:
-    runs-on: macos-latest
+  generate-and-test-apk:
+    name: Generate and Test APK (Maestro Cloud)
+    runs-on: ubuntu-latest
 
     steps:
       # ----------------------------------------
-      # Checkout Repo
+      # Checkout repo
       # ----------------------------------------
-      - name: Checkout Repo
+      - name: 📦 Checkout project repo
         uses: actions/checkout@v4
-
-      # ----------------------------------------
-      # Node + PNPM
-      # ----------------------------------------
-      - name: Setup Node
-        uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: Install PNPM
-        run: npm install -g pnpm
-
-      - name: Install Dependencies
-        run: pnpm install
-
-      - name: Install Maestro
-        run: pnpm run install-maestro
-
-      - name: Load Env Variables
-        run: echo "EXPO_PUBLIC_APP_ENV=development" >> $GITHUB_ENV
+          fetch-depth: 0
 
       # ----------------------------------------
-      # Cache Gradle
+      # Node + PNPM + install dependencies
       # ----------------------------------------
-      - name: Cache Gradle
-        uses: actions/cache@v3
+      - name: 📦 Setup Node + PNPM + install deps
+        uses: ./.github/actions/setup-node-pnpm-install
+
+      # ----------------------------------------
+      # Set up JDK and generate standalone release APK
+      # ----------------------------------------
+      - name: 📦 Set Up JDK + Generate Release APK
+        uses: ./.github/actions/setup-jdk-generate-apk
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          APP_ENV: staging
 
       # ----------------------------------------
-      # Prebuild + Build Release APK
+      # Upload Test APK as artifact (optional)
       # ----------------------------------------
-      - name: Prebuild Native Projects
-        run: pnpm prebuild:development
-
-      - name: Build Android Release APK
-        run: |
-          cd android
-          ./gradlew assembleRelease
-          cd ..
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-apk
+          path: ./android/app/build/outputs/apk/release/app-release.apk
 
       # ----------------------------------------
-      # Maestro Cloud Tests
+      # Run Maestro Cloud E2E tests
       # ----------------------------------------
-      - name: Run Maestro Cloud Tests
+      - name: 📱 Run E2E Tests with Maestro Cloud
         uses: mobile-dev-inc/action-maestro-cloud@v1
         with:
           api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
