@@ -57,4 +57,4 @@ jobs:
           project-id: ${{ secrets.MAESTRO_PROJECT_ID }}
           app-file: android/app/build/outputs/apk/release/app-release.apk
           env: |
-            APP_ID=com.obytes.development
+            APP_ID=com.obytes.preview
