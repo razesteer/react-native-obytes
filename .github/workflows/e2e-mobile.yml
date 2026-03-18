@@ -55,3 +55,5 @@ jobs:
           api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
           project-id: ${{ secrets.MAESTRO_PROJECT_ID }}
           app-file: android/app/build/outputs/apk/debug/app-debug.apk
+          env: |
+            APP_ID=com.obytes.development
